@@ -1,3 +1,9 @@
+
+Code for our CIKM 2020 Paper ["**S3-Rec: Self-Supervised Learning for Sequential
+ Recommendation with Mutual Information Maximization"**](https://arxiv.org/pdf/2008.07873.pdf)
+
+# Overview
+![avatar](model.PNG)
 # NOTE
 In the PAPER, we pair the ground-truth item 
 with 99 randomly sampled negative items that the user
