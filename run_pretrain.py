@@ -20,7 +20,7 @@ from utils import get_user_seqs_long, get_item2attribute_json, check_path, set_s
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--data_dir', default='../TOIS/data/', type=str)
+    parser.add_argument('--data_dir', default='./data/', type=str)
     parser.add_argument('--output_dir', default='output/', type=str)
     parser.add_argument('--data_name', default='Beauty', type=str)
 
@@ -97,11 +97,7 @@ def main():
 
         trainer.pretrain(epoch, pretrain_dataloader)
 
-        ckp = f'{args.data_name}-epochs-{epoch + 1}.pt'
-        checkpoint_path = os.path.join(args.output_dir, ckp)
-        trainer.save(checkpoint_path)
-        exit(0)
-        if (epoch+1) % 1 == 0:
+        if (epoch+1) % 10 == 0:
             ckp = f'{args.data_name}-epochs-{epoch+1}.pt'
             checkpoint_path = os.path.join(args.output_dir, ckp)
             trainer.save(checkpoint_path)

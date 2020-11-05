@@ -18,7 +18,7 @@ from utils import EarlyStopping, get_user_seqs, get_item2attribute_json, check_p
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--data_dir', default='../TOIS/data/', type=str)
+    parser.add_argument('--data_dir', default='./data/', type=str)
     parser.add_argument('--output_dir', default='output/', type=str)
     parser.add_argument('--data_name', default='Beauty', type=str)
     parser.add_argument('--do_eval', action='store_true')
