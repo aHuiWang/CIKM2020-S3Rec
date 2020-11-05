@@ -20,7 +20,7 @@ The results are shown in the following pic.
 ![avatar](sample_99.PNG)
 
 
-We alse rank the ground-truth item with **ALL the items**.
+We alse rank the ground-truth item with **all the items**.
 We omit the FM and AutoInt because they need 
 enumerate all user-item pairs, which take a very long time. 
 
@@ -54,11 +54,22 @@ python run_pretrain.py \
 ```
 
 ## finetune
++ Rank ground-truth item with 99 randomly sampled negative items
+```shell script
+python run_finetune_sample.py \
+--data_name Beauty \
+--ckp 100
+```
+
++ Rank the ground-truth item with all the items
 ```shell script
 python run_finetune_full.py \
 --data_name Beauty \
 --ckp 100
 ```
+
+
+
 
 
 ### Cite
