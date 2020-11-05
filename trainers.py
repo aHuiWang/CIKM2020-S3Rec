@@ -9,10 +9,8 @@ import random
 import torch
 import torch.nn as nn
 from torch.optim import Adam
-from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 
-from datasets import InfoMaxDataset
-from utils import recall_at_k, ndcg_k
+from utils import recall_at_k, ndcg_k, get_metric
 
 
 class Trainer:
@@ -42,100 +40,37 @@ class Trainer:
     def train(self, epoch):
         self.iteration(epoch, self.train_dataloader)
 
-    def valid(self, epoch):
-        return self.iteration(epoch, self.eval_dataloader, train=False)
+    def valid(self, epoch, full_sort=False):
+        return self.iteration(epoch, self.eval_dataloader, full_sort, train=False)
 
-    def test(self, epoch):
-        return self.iteration(epoch, self.test_dataloader, train=False)
+    def test(self, epoch, full_sort=False):
+        return self.iteration(epoch, self.test_dataloader, full_sort, train=False)
 
-    def iteration(self, epoch, dataloader, train=True):
+    def iteration(self, epoch, dataloader, full_sort=False, train=True):
+        raise NotImplementedError
 
-        str_code = "train" if train else "test"
+    def get_sample_scores(self, epoch, pred_list):
+        pred_list = (-pred_list).argsort().argsort()[:, 0]
+        HIT_1, NDCG_1, MRR = get_metric(pred_list, 1)
+        HIT_5, NDCG_5, MRR = get_metric(pred_list, 5)
+        HIT_10, NDCG_10, MRR = get_metric(pred_list, 10)
+        post_fix = {
+            "Epoch": epoch,
+            "HIT@1": '{:.4f}'.format(HIT_1), "NDCG@1": '{:.4f}'.format(NDCG_1),
+            "HIT@5": '{:.4f}'.format(HIT_5), "NDCG@5": '{:.4f}'.format(NDCG_5),
+            "HIT@10": '{:.4f}'.format(HIT_10), "NDCG@10": '{:.4f}'.format(NDCG_10),
+            "MRR": '{:.4f}'.format(MRR),
+        }
+        print(post_fix)
+        with open(self.args.log_file, 'a') as f:
+            f.write(str(post_fix) + '\n')
+        return [HIT_1, NDCG_1, HIT_5, NDCG_5, HIT_10, NDCG_10, MRR], str(post_fix)
 
-        # Setting the tqdm progress bar
-
-        rec_data_iter = tqdm.tqdm(enumerate(dataloader),
-                                  desc="Recommendation EP_%s:%d" % (str_code, epoch),
-                                  total=len(dataloader),
-                                  bar_format="{l_bar}{r_bar}")
-        if train:
-            self.model.train()
-            rec_avg_loss = 0.0
-            rec_cur_loss = 0.0
-
-            for i, batch in rec_data_iter:
-                # 0. batch_data will be sent into the device(GPU or CPU)
-                batch = tuple(t.to(self.device) for t in batch)
-                _, input_ids, target_pos, target_neg, _ = batch
-                # 采用 负采样 cross_entropy
-                sequence_output = self.model(input_ids)
-                loss = self.cross_entropy(sequence_output, target_pos, target_neg)
-                self.optim.zero_grad()
-                loss.backward()  # 修改loss
-                self.optim.step()
-
-                rec_avg_loss += loss.item()
-                rec_cur_loss = loss.item()
-
-            post_fix = {
-                "epoch": epoch,
-                "rec_avg_loss": '{:.4f}'.format(rec_avg_loss / len(rec_data_iter)),
-                "rec_cur_loss": '{:.4f}'.format(rec_cur_loss),
-            }
-
-            if (epoch + 1) % self.args.log_freq == 0:
-                print(str(post_fix))
-
-            with open(self.args.log_file, 'a') as f:
-                f.write(str(post_fix) + '\n')
-
-        else:
-            self.model.eval()
-
-            # 推荐任务的测试
-            pred_list = None
-            answer_list = None
-            for i, batch in rec_data_iter:
-                # 0. batch_data will be sent into the device(GPU or cpu)
-                batch = tuple(t.to(self.device) for t in batch)
-                user_ids, input_ids, target_pos, target_neg, answers = batch
-                recommend_output = self.model(input_ids)
-
-                recommend_output = recommend_output[:, -1, :]
-                # 推荐的结果
-
-                rating_pred = self.predict(recommend_output)
-
-                rating_pred = rating_pred.cpu().data.numpy().copy()
-                batch_user_index = user_ids.cpu().numpy()
-                rating_pred[self.args.train_matrix[batch_user_index].toarray() > 0] = 0
-                # reference: https://stackoverflow.com/a/23734295, https://stackoverflow.com/a/20104162
-                # argpartition 时间复杂度O(n)  argsort O(nlogn) 只会做
-                # 加负号"-"表示取大的值
-                ind = np.argpartition(rating_pred, -20)[:, -20:]
-                # 根据返回的下标 从对应维度分别取对应的值 得到每行topk的子表
-                arr_ind = rating_pred[np.arange(len(rating_pred))[:, None], ind]
-                # 对子表进行排序 得到从大到小的顺序
-                arr_ind_argsort = np.argsort(arr_ind)[np.arange(len(rating_pred)), ::-1]
-                # 再取一次 从ind中取回 原来的下标
-                batch_pred_list = ind[np.arange(len(rating_pred))[:, None], arr_ind_argsort]
-
-                if i == 0:
-                    pred_list = batch_pred_list
-                    answer_list = answers.cpu().data.numpy()
-                else:
-                    pred_list = np.append(pred_list, batch_pred_list, axis=0)
-                    answer_list = np.append(answer_list, answers.cpu().data.numpy(), axis=0)
-            return self.get_scores(epoch, answer_list, pred_list)
-
-
-    def get_scores(self, epoch, answers, pred_list):
+    def get_full_sort_score(self, epoch, answers, pred_list):
         recall, ndcg = [], []
         for k in [5, 10, 15, 20]:
             recall.append(recall_at_k(answers, pred_list, k))
-            # MAP.append(mapk(answers, pred_list, k))
             ndcg.append(ndcg_k(answers, pred_list, k))
-        # mrr = mrrk(answers, pred_list)
         post_fix = {
             "Epoch": epoch,
             "HIT@5": '{:.4f}'.format(recall[0]), "NDCG@5": '{:.4f}'.format(ndcg[0]),
@@ -145,7 +80,7 @@ class Trainer:
         print(post_fix)
         with open(self.args.log_file, 'a') as f:
             f.write(str(post_fix) + '\n')
-        return [recall[0], ndcg[0], recall[1], ndcg[1], recall[3], ndcg[3]]
+        return [recall[0], ndcg[0], recall[1], ndcg[1], recall[3], ndcg[3]], str(post_fix)
 
     def save(self, file_name):
         torch.save(self.model.cpu().state_dict(), file_name)
@@ -172,7 +107,14 @@ class Trainer:
 
         return loss
 
-    def predict(self, seq_out):
+    def predict_sample(self, seq_out, test_neg_sample):
+        # [batch 100 hidden_size]
+        test_item_emb = self.model.item_embeddings(test_neg_sample)
+        # [batch hidden_size]
+        test_logits = torch.bmm(test_item_emb, seq_out.unsqueeze(-1)).squeeze(-1)  # [B 100]
+        return test_logits
+
+    def predict_full(self, seq_out):
         # [item_num hidden_size]
         test_item_emb = self.model.item_embeddings.weight
         # [batch hidden_size ]
@@ -182,11 +124,9 @@ class Trainer:
 class PretrainTrainer(Trainer):
 
     def __init__(self, model,
-                 user_seq,
                  train_dataloader,
                  eval_dataloader,
-                 test_dataloader, args,
-                 long_sequence=None):
+                 test_dataloader, args):
         super(PretrainTrainer, self).__init__(
             model,
             train_dataloader,
@@ -194,16 +134,7 @@ class PretrainTrainer(Trainer):
             test_dataloader, args
         )
 
-        # Setting the train and test data loader
-        self.user_seq = user_seq
-        self.long_sequence = long_sequence
-
-    # finetune same as base
-
-    def pretrain(self, epoch):
-        pretrain_dataset = InfoMaxDataset(self.args, self.user_seq, self.long_sequence)
-        pretrain_sampler = RandomSampler(pretrain_dataset)
-        pretrain_dataloader = DataLoader(pretrain_dataset, sampler=pretrain_sampler, batch_size=self.args.pre_batch_size)
+    def pretrain(self, epoch, pretrain_dataloader):
 
         desc = f'AAP-{self.args.aap_weight}-' \
                f'MIP-{self.args.mip_weight}-' \
@@ -248,17 +179,16 @@ class PretrainTrainer(Trainer):
         num = len(pretrain_data_iter) * self.args.pre_batch_size
         post_fix = {
             "epoch": epoch,
-            "item_loss_avg": '{:.4f}'.format(aap_loss_avg /num),
-            "tag_loss_avg": '{:.4f}'.format(mip_loss_avg /num),
-            "other_tag_loss_avg": '{:.4f}'.format(map_loss_avg / num),
-            "span_loss_avg": '{:.4f}'.format(sp_loss_avg / num),
+            "aap_loss_avg": '{:.4f}'.format(aap_loss_avg /num),
+            "mip_loss_avg": '{:.4f}'.format(mip_loss_avg /num),
+            "map_loss_avg": '{:.4f}'.format(map_loss_avg / num),
+            "sp_loss_avg": '{:.4f}'.format(sp_loss_avg / num),
         }
         print(desc)
         print(str(post_fix))
         with open(self.args.log_file, 'a') as f:
             f.write(str(desc) + '\n')
             f.write(str(post_fix) + '\n')
-
 
 class FinetuneTrainer(Trainer):
 
@@ -272,8 +202,13 @@ class FinetuneTrainer(Trainer):
             eval_dataloader,
             test_dataloader, args
         )
-    def iteration(self, epoch, dataloader, train=True):
+
+    def iteration(self, epoch, dataloader, full_sort=False, train=True):
+
         str_code = "train" if train else "test"
+
+        # Setting the tqdm progress bar
+
         rec_data_iter = tqdm.tqdm(enumerate(dataloader),
                                   desc="Recommendation EP_%s:%d" % (str_code, epoch),
                                   total=len(dataloader),
@@ -287,13 +222,11 @@ class FinetuneTrainer(Trainer):
                 # 0. batch_data will be sent into the device(GPU or CPU)
                 batch = tuple(t.to(self.device) for t in batch)
                 _, input_ids, target_pos, target_neg, _ = batch
-                # 采用 负采样 cross_entropy
+                # Binary cross_entropy
                 sequence_output = self.model.finetune(input_ids)
-
                 loss = self.cross_entropy(sequence_output, target_pos, target_neg)
-
                 self.optim.zero_grad()
-                loss.backward()  # 修改loss
+                loss.backward()
                 self.optim.step()
 
                 rec_avg_loss += loss.item()
@@ -306,40 +239,65 @@ class FinetuneTrainer(Trainer):
             }
 
             if (epoch + 1) % self.args.log_freq == 0:
-                # data_iter.write(str(post_fix))
                 print(str(post_fix))
+
+            with open(self.args.log_file, 'a') as f:
+                f.write(str(post_fix) + '\n')
 
         else:
             self.model.eval()
 
-            # 推荐任务的测试
             pred_list = None
-            answer_list = None
-            for i, batch in rec_data_iter:
-                # 0. batch_data will be sent into the device(GPU or cpu)
-                batch = tuple(t.to(self.device) for t in batch)
-                user_ids, input_ids, target_pos, target_neg, answers = batch
-                recommend_output = self.model.finetune(input_ids)
-                recommend_output = recommend_output[:, -1, :]
 
-                rating_pred = self.predict(recommend_output)
-                rating_pred = rating_pred.cpu().data.numpy().copy()
-                batch_user_index = user_ids.cpu().numpy()
-                rating_pred[self.args.train_matrix[batch_user_index].toarray() > 0] = 0
-                # reference: https://stackoverflow.com/a/23734295, https://stackoverflow.com/a/20104162
-                # argpartition 时间复杂度O(n)  argsort O(nlogn) 只会做
-                # 加负号"-"表示取大的值
-                ind = np.argpartition(rating_pred, -20)[:, -20:]
-                # 根据返回的下标 从对应维度分别取对应的值 得到每行topk的子表
-                arr_ind = rating_pred[np.arange(len(rating_pred))[:, None], ind]
-                # 对子表进行排序 得到从大到小的顺序
-                arr_ind_argsort = np.argsort(arr_ind)[np.arange(len(rating_pred)), ::-1]
-                # 再取一次 从ind中取回 原来的下标
-                batch_pred_list = ind[np.arange(len(rating_pred))[:, None], arr_ind_argsort]
-                if i == 0:
-                    pred_list = batch_pred_list
-                    answer_list = answers.cpu().data.numpy()
-                else:
-                    pred_list = np.append(pred_list, batch_pred_list, axis=0)
-                    answer_list = np.append(answer_list, answers.cpu().data.numpy(), axis=0)
-            return self.get_scores(epoch, answer_list, pred_list)
+            if full_sort:
+                answer_list = None
+                for i, batch in rec_data_iter:
+                    # 0. batch_data will be sent into the device(GPU or cpu)
+                    batch = tuple(t.to(self.device) for t in batch)
+                    user_ids, input_ids, target_pos, target_neg, answers = batch
+                    recommend_output = self.model.finetune(input_ids)
+
+                    recommend_output = recommend_output[:, -1, :]
+                    # 推荐的结果
+
+                    rating_pred = self.predict_full(recommend_output)
+
+                    rating_pred = rating_pred.cpu().data.numpy().copy()
+                    batch_user_index = user_ids.cpu().numpy()
+                    rating_pred[self.args.train_matrix[batch_user_index].toarray() > 0] = 0
+                    # reference: https://stackoverflow.com/a/23734295, https://stackoverflow.com/a/20104162
+                    # argpartition 时间复杂度O(n)  argsort O(nlogn) 只会做
+                    # 加负号"-"表示取大的值
+                    ind = np.argpartition(rating_pred, -20)[:, -20:]
+                    # 根据返回的下标 从对应维度分别取对应的值 得到每行topk的子表
+                    arr_ind = rating_pred[np.arange(len(rating_pred))[:, None], ind]
+                    # 对子表进行排序 得到从大到小的顺序
+                    arr_ind_argsort = np.argsort(arr_ind)[np.arange(len(rating_pred)), ::-1]
+                    # 再取一次 从ind中取回 原来的下标
+                    batch_pred_list = ind[np.arange(len(rating_pred))[:, None], arr_ind_argsort]
+
+                    if i == 0:
+                        pred_list = batch_pred_list
+                        answer_list = answers.cpu().data.numpy()
+                    else:
+                        pred_list = np.append(pred_list, batch_pred_list, axis=0)
+                        answer_list = np.append(answer_list, answers.cpu().data.numpy(), axis=0)
+                return self.get_full_sort_score(epoch, answer_list, pred_list)
+
+            else:
+                for i, batch in rec_data_iter:
+                    # 0. batch_data will be sent into the device(GPU or cpu)
+                    batch = tuple(t.to(self.device) for t in batch)
+                    user_ids, input_ids, target_pos, target_neg, answers, sample_negs = batch
+                    recommend_output = self.model.finetune(input_ids)
+                    test_neg_items = torch.cat((answers, sample_negs), -1)
+                    recommend_output = recommend_output[:, -1, :]
+
+                    test_logits = self.predict_sample(recommend_output, test_neg_items)
+                    test_logits = test_logits.cpu().detach().numpy().copy()
+                    if i == 0:
+                        pred_list = test_logits
+                    else:
+                        pred_list = np.append(pred_list, test_logits, axis=0)
+
+                return self.get_sample_scores(epoch, pred_list)

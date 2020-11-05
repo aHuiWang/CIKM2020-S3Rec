@@ -13,6 +13,17 @@ from scipy.sparse import csr_matrix
 import torch
 import torch.nn.functional as F
 
+def set_seed(seed):
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    # some cudnn methods can be random even after fixing the seed
+    # unless you tell it to be deterministic
+    torch.backends.cudnn.deterministic = True
+
 def check_path(path):
     if not os.path.exists(path):
         os.makedirs(path)
@@ -155,6 +166,30 @@ def get_user_seqs_long(data_file):
 
     return user_seq, max_item, long_sequence
 
+def get_user_seqs_and_sample(data_file, sample_file):
+    lines = open(data_file).readlines()
+    user_seq = []
+    item_set = set()
+    for line in lines:
+        user, items = line.strip().split(' ', 1)
+        items = items.split(' ')
+        items = [int(item) for item in items]
+        user_seq.append(items)
+        item_set = item_set | set(items)
+    max_item = max(item_set)
+
+    lines = open(sample_file).readlines()
+    sample_seq = []
+    for line in lines:
+        user, items = line.strip().split(' ', 1)
+        items = items.split(' ')
+        items = [int(item) for item in items]
+        sample_seq.append(items)
+
+    assert len(user_seq) == len(sample_seq)
+
+    return user_seq, max_item, sample_seq
+
 def get_item2attribute_json(data_file):
     item2attribute = json.loads(open(data_file).readline())
     attribute_set = set()
@@ -163,8 +198,17 @@ def get_item2attribute_json(data_file):
     attribute_size = max(attribute_set) # 331
     return item2attribute, attribute_size
 
-# 字典排序
-# sorted(d.items(), key=lambda d: d[1])
+def get_metric(pred_list, topk=10):
+    NDCG = 0.0
+    HIT = 0.0
+    MRR = 0.0
+    # [batch] the answer's rank
+    for rank in pred_list:
+        MRR += 1.0 / (rank + 1.0)
+        if rank < topk:
+            NDCG += 1.0 / np.log2(rank + 2.0)
+            HIT += 1.0
+    return HIT /len(pred_list), NDCG /len(pred_list), MRR /len(pred_list)
 
 def precision_at_k_per_sample(actual, predicted, topk):
     num_hits = 0
@@ -172,7 +216,6 @@ def precision_at_k_per_sample(actual, predicted, topk):
         if place in actual:
             num_hits += 1
     return num_hits / (topk + 0.0)
-
 
 def precision_at_k(actual, predicted, topk):
     sum_precision = 0.0
@@ -183,7 +226,6 @@ def precision_at_k(actual, predicted, topk):
         sum_precision += len(act_set & pred_set) / float(topk)
 
     return sum_precision / num_users
-
 
 def recall_at_k(actual, predicted, topk):
     sum_recall = 0.0

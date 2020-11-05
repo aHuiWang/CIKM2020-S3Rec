@@ -14,7 +14,7 @@ with **99 randomly sampled negative items** that the user
 has not interacted with, and report the results of 
 HR@{1, 5, 10}, NDCG@{5, 10} and MRR. The used test files are name as 
 ```
-data_name_neg.txt
+data_name_sample.txt
 ```
 The results are shown in the following pic.
 ![avatar](sample_99.PNG)
@@ -55,7 +55,7 @@ python run_pretrain.py \
 
 ## finetune
 ```shell script
-python run_finetune.py \
+python run_finetune_full.py \
 --data_name Beauty \
 --ckp 100
 ```

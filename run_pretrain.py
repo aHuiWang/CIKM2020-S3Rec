@@ -5,19 +5,24 @@
 import numpy as np
 import random
 import torch
+from torch.utils.data import DataLoader, RandomSampler
+
 import os
 import argparse
 
+from datasets import PretrainDataset
 from trainers import PretrainTrainer
 from models import S3RecModel
-from utils import get_user_seqs_long, get_item2attribute_json, check_path
+
+
+from utils import get_user_seqs_long, get_item2attribute_json, check_path, set_seed
 
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--data_dir', default='./data/', type=str)
+    parser.add_argument('--data_dir', default='../TOIS/data/', type=str)
     parser.add_argument('--output_dir', default='output/', type=str)
-    parser.add_argument('--data_name', default='Toys_and_Games', type=str)
+    parser.add_argument('--data_name', default='Beauty', type=str)
 
     # model args
     parser.add_argument("--model_name", default='Pretrain', type=str)
@@ -56,9 +61,10 @@ def main():
 
 
     args = parser.parse_args()
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
+
+    set_seed(args.seed)
+    check_path(args.output_dir)
+
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
     args.cuda_condition = torch.cuda.is_available() and not args.no_cuda
 
@@ -74,19 +80,31 @@ def main():
     # save model args
     args_str = f'{args.model_name}-{args.data_name}'
     args.log_file = os.path.join(args.output_dir, args_str + '.txt')
+    print(args)
     with open(args.log_file, 'a') as f:
         f.write(str(args) + '\n')
 
     args.item2attribute = item2attribute
 
     model = S3RecModel(args=args)
-    trainer = PretrainTrainer(model, user_seq, None, None, None, args,
-                              long_sequence=long_sequence)
+    trainer = PretrainTrainer(model, None, None, None, args)
+
     for epoch in range(args.pre_epochs):
-        trainer.pretrain(epoch)
-        if (epoch+1) % 10 == 0:
+
+        pretrain_dataset = PretrainDataset(args, user_seq, long_sequence)
+        pretrain_sampler = RandomSampler(pretrain_dataset)
+        pretrain_dataloader = DataLoader(pretrain_dataset, sampler=pretrain_sampler, batch_size=args.pre_batch_size)
+
+        trainer.pretrain(epoch, pretrain_dataloader)
+
+        ckp = f'{args.data_name}-epochs-{epoch + 1}.pt'
+        checkpoint_path = os.path.join(args.output_dir, ckp)
+        trainer.save(checkpoint_path)
+        exit(0)
+        if (epoch+1) % 1 == 0:
             ckp = f'{args.data_name}-epochs-{epoch+1}.pt'
             checkpoint_path = os.path.join(args.output_dir, ckp)
             trainer.save(checkpoint_path)
+
 
 main()

@@ -5,7 +5,7 @@ from torch.utils.data import Dataset
 
 from utils import neg_sample
 
-class InfoMaxDataset(Dataset):
+class PretrainDataset(Dataset):
 
     def __init__(self, args, user_seq, long_sequence):
         self.args = args
@@ -118,9 +118,10 @@ class InfoMaxDataset(Dataset):
 
 class SASRecDataset(Dataset):
 
-    def __init__(self, args, user_seq, data_type='train'):
+    def __init__(self, args, user_seq, test_neg_items=None, data_type='train'):
         self.args = args
         self.user_seq = user_seq
+        self.test_neg_items = test_neg_items
         self.data_type = data_type
         self.max_len = args.max_seq_length
 
@@ -174,13 +175,26 @@ class SASRecDataset(Dataset):
         assert len(target_pos) == self.max_len
         assert len(target_neg) == self.max_len
 
+        if self.test_neg_items is not None:
+            test_samples = self.test_neg_items[index]
 
-        cur_tensors = (
-                       torch.tensor(user_id, dtype=torch.long),
-                       torch.tensor(input_ids, dtype=torch.long),
-                       torch.tensor(target_pos, dtype=torch.long),
-                       torch.tensor(target_neg, dtype=torch.long),
-                       torch.tensor(answer, dtype=torch.long))
+            cur_tensors = (
+                torch.tensor(user_id, dtype=torch.long), # user_id for testing
+                torch.tensor(input_ids, dtype=torch.long),
+                torch.tensor(target_pos, dtype=torch.long),
+                torch.tensor(target_neg, dtype=torch.long),
+                torch.tensor(answer, dtype=torch.long),
+                torch.tensor(test_samples, dtype=torch.long),
+            )
+        else:
+            cur_tensors = (
+                torch.tensor(user_id, dtype=torch.long),  # user_id for testing
+                torch.tensor(input_ids, dtype=torch.long),
+                torch.tensor(target_pos, dtype=torch.long),
+                torch.tensor(target_neg, dtype=torch.long),
+                torch.tensor(answer, dtype=torch.long),
+            )
+
         return cur_tensors
 
     def __len__(self):
