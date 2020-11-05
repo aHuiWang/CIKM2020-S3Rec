@@ -20,9 +20,10 @@ The results are shown in the following pic.
 ![avatar](sample_99.PNG)
 
 
-In the repo, we rank the ground-truth item with **ALL the items**.
+We alse rank the ground-truth item with **ALL the items**.
 We omit the FM and AutoInt because they need 
 enumerate all user-item pairs, which take a very long time. 
+
 The results are shown in the following pic.
 
 
