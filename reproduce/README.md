@@ -1,15 +1,17 @@
 We release the pre-trained models for reproduce.
 ```
-Beauty-epochs-150.pt
-Toys_and_Games-epochs-150.pt
+{data-name}-epochs-{pretrain_epochs_num}.pt
 ```
 The log files are also released and the '-0' means the SASRec.
-
+```
+Finetune_sample-{data-name}-epochs-0.pt
+Finetune_sample-{data-name}-epochs-{pretrain_epochs_num}.pt
+```
 ## Note
 
-There is a minor bug for the old version codes, which is that I did not set random seeds for all random methods.
- I am sorry for this error. 
-And I deleted my pre-trained model considering the disk space. So I re-run the code and get new results, which could be
+There is a minor bug in the old version codes, which is that we did not set random seed for all random methods.
+ We are very sorry for this error. 
+And we deleted my pre-trained model considering the disk space. So I re-run the code and get new results, which could be
 considered as reproduced the results in the paper.
 
 When you fine-tune the model, please check the log information. If it's
@@ -20,11 +22,11 @@ then you actually run the SASRec, otherwise you would see
 ```
 Load Checkpoint From ckp_path!
 ```
-which means you succseefully initialize the model with pre-trained parameters.
+which means you successfully initialize the model with pre-trained parameters.
 
 ### Meituan
 
-Considering the data security issues, this dataset will not release.
+Considering the **data security** issues, this dataset will not release.
 
 ### Beauty
 
@@ -55,7 +57,7 @@ python run_finetune_sample.py \
 | SASRec in paper |0.1455|0.3466|0.2497  |0.4622 |0.2869   |0.2520|
 | SASRec in repo  |0.1472|0.3441|0.2487  |0.4645 |0.3875   |0.2524|
 | S3-Rec in paper |0.1841|0.4267|0.3104  |0.5614 |0.3538   |0.3071|
-| S3-Rec in repo  |doing |doing |doing   |doing  |doing    |doing |
+| S3-Rec in repo  |runing|runing|runing  |runing |runing   |runing|
 
 + pretrain (just use the default hyper-parameters)
 ```shell script
@@ -97,7 +99,7 @@ python run_finetune_sample.py \
 | SASRec in paper |0.2375|0.5745|0.4113  |0.7373 |0.4642   |0.3927|
 | SASRec in repo  |0.2310|0.5638|0.4017  |0.7384 |0.4582   |0.3856|
 | S3-Rec in paper |0.2591|0.6085|0.4401  |0.7725 |0.4934   |0.4190|
-| S3-Rec in repo  |doing |doing |doing   |doing  |doing    |doing |
+| S3-Rec in repo  |runing|runing|runing  |runing |runing   |runing|
 
 
 + pretrain (just use the default hyper-parameters)
