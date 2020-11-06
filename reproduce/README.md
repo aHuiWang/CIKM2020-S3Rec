@@ -57,7 +57,7 @@ python run_finetune_sample.py \
 | SASRec in paper |0.1455|0.3466|0.2497  |0.4622 |0.2869   |0.2520|
 | SASRec in repo  |0.1472|0.3441|0.2487  |0.4645 |0.3875   |0.2524|
 | S3-Rec in paper |0.1841|0.4267|0.3104  |0.5614 |0.3538   |0.3071|
-| S3-Rec in repo  |runing|runing|runing  |runing |runing   |runing|
+| S3-Rec in repo  |0.1840|0.4319|0.3125  |0.5664 |0.3559   |0.3084|
 
 + pretrain (just use the default hyper-parameters)
 ```shell script
@@ -67,7 +67,9 @@ python run_pretrain.py \
 
 + finetune (just use the default hyper-parameters)
 ```shell script
-todo
+python run_finetune_sample.py \
+--data_name Sports_and_Outdoors \
+--ckp 100
 ```
 
 ### Toys_and_Games
