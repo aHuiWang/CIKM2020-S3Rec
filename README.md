@@ -92,23 +92,13 @@ If you find the our codes and datasets useful for your research or development, 
                Fuzheng Zhang and
                Zhongyuan Wang and
                Ji{-}Rong Wen},
-  editor    = {Mathieu d'Aquin and
-               Stefan Dietze and
-               Claudia Hauff and
-               Edward Curry and
-               Philippe Cudr{\'{e}}{-}Mauroux},
   title     = {S3-Rec: Self-Supervised Learning for Sequential Recommendation with
                Mutual Information Maximization},
   booktitle = {{CIKM} '20: The 29th {ACM} International Conference on Information
                and Knowledge Management, Virtual Event, Ireland, October 19-23, 2020},
   pages     = {1893--1902},
   publisher = {{ACM}},
-  year      = {2020},
-  url       = {https://doi.org/10.1145/3340531.3411954},
-  doi       = {10.1145/3340531.3411954},
-  timestamp = {Mon, 19 Oct 2020 18:49:47 +0200},
-  biburl    = {https://dblp.org/rec/conf/cikm/ZhouWZZWZWW20.bib},
-  bibsource = {dblp computer science bibliography, https://dblp.org}
+  year      = {2020}
 }
 ```
 
