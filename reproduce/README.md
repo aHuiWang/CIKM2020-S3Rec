@@ -1,8 +1,8 @@
-We release the pre-trained models for reproduce.
+We release the pre-trained models for reproducibility.
 ```
 {data-name}-epochs-{pretrain_epochs_num}.pt
 ```
-The log files are also released and the '-0' means the SASRec.
+The log files are also released and the '-0' means without pre-training.
 ```
 Finetune_sample-{data-name}-epochs-0.pt
 Finetune_sample-{data-name}-epochs-{pretrain_epochs_num}.pt
@@ -11,14 +11,14 @@ Finetune_sample-{data-name}-epochs-{pretrain_epochs_num}.pt
 
 There is a minor bug in the old version codes, which is that we did not set random seed for all random methods.
  We are very sorry for this error. 
-And we deleted my pre-trained model considering the disk space. So I re-run the code and get new results, which could be
+And we deleted pre-trained model considering the disk space. So we re-run the code and get new results, which could be
 considered as reproduced the results in the paper.
 
-When you fine-tune the model, please check the log information. If it's
+When you fine-tune the model, please check the log information. If it is
 ```
 ckp_file Not Found! The Model is same as SASRec.
 ```
-then you actually run the SASRec, otherwise you would see
+then you actually run the SASRec and the model's parameters are initialized randomly. Otherwise you would see
 ```
 Load Checkpoint From ckp_path!
 ```
@@ -99,8 +99,7 @@ python run_finetune_sample.py \
 | SASRec in paper |0.2375|0.5745|0.4113  |0.7373 |0.4642   |0.3927|
 | SASRec in repo  |0.2310|0.5638|0.4017  |0.7384 |0.4582   |0.3856|
 | S3-Rec in paper |0.2591|0.6085|0.4401  |0.7725 |0.4934   |0.4190|
-| S3-Rec in repo  |runing|runing|runing  |runing |runing   |runing|
-
+| S3-Rec in repo  |0.2665|0.6195|0.4492  |0.7818 |0.5019   |0.4270|
 
 + pretrain (just use the default hyper-parameters)
 ```shell script
@@ -110,7 +109,9 @@ python run_pretrain.py \
 
 + finetune (just use the default hyper-parameters)
 ```shell script
-todo
+python run_finetune_sample.py \
+--data_name Yelp \
+--ckp 100
 ```
 
 ### LastFM

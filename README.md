@@ -39,7 +39,12 @@ pip install -r requirements.txt
 
 ## data format
 ```shell script
+data preprocess
 ./data/data_process.py
+
+generate negative items for testing
+./data/generate_test.py
+
 
 data-name.txt
 one user per line
