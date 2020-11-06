@@ -5,6 +5,9 @@ Code for our CIKM 2020 Paper ["**S3-Rec: Self-Supervised Learning for Sequential
 ## Overview
 ![avatar](model.PNG)
 
+## Reproduce
+Please check the ./reproduce/ directory.
+
 ## Results
 Performance comparison of different methods on six datasets. The best performance and the second best performance
 methods are denoted in bold and underlined fonts respectively.
@@ -14,7 +17,7 @@ with **99 randomly sampled negative items** that the user
 has not interacted with, and report the results of 
 HR@{1, 5, 10}, NDCG@{5, 10} and MRR. The used test files are name as 
 ```
-data_name_sample.txt
+data-name_sample.txt
 ```
 The results are shown in the following pic.
 ![avatar](sample_99.PNG)
@@ -34,7 +37,7 @@ The results are shown in the following pic.
 pip install -r requirements.txt
 ```
 
-## data preprocess
+## data format
 ```shell script
 ./data/data_process.py
 
@@ -43,6 +46,11 @@ one user per line
 user_1 item_1 item_2 ...
 user_2 item_1 item_2 ...
 
+data-name_sample.txt
+one user per line
+user_1 neg_item_1 neg_item_2 ...
+user_2 neg_item_1 neg_item_2 ...
+
 data-name_item2attributes.json
 {item_1:[attr, ...], item_2:[attr, ...], ... }
 ```
@@ -50,26 +58,25 @@ data-name_item2attributes.json
 ## pretrain
 ```shell script
 python run_pretrain.py \
---data_name Beauty
+--data_name data_name
 ```
 
 ## finetune
+We support two evaluation methods. For more details, please check the ./reproduce directory.
+
 + Rank ground-truth item with 99 randomly sampled negative items
 ```shell script
 python run_finetune_sample.py \
---data_name Beauty \
---ckp 100
+--data_name data_name \
+--ckp pretrain_epochs_num
 ```
 
 + Rank the ground-truth item with all the items
 ```shell script
 python run_finetune_full.py \
---data_name Beauty \
---ckp 100
+--data_name data_name \
+--ckp pretrain_epochs_num
 ```
-
-
-
 
 
 ### Cite
